@@ -121,6 +121,9 @@ found:
     return 0;
   }
 
+  p->kernel_pagetable = proc_kvminit();
+  proc_kvmmap(p->kernel_pagetable, KSTACK(p - proc),  kvmpa(KSTACK((int) (p - proc))), PGSIZE, PTE_R | PTE_W);
+
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
@@ -136,13 +139,22 @@ found:
 static void
 freeproc(struct proc *p)
 {
-  if(p->trapframe)
+  if(p->trapframe) {
     kfree((void*)p->trapframe);
+  }
   p->trapframe = 0;
-  if(p->pagetable)
+
+  if(p->pagetable) {
     proc_freepagetable(p->pagetable, p->sz);
+  }
   p->pagetable = 0;
   p->sz = 0;
+
+  if (p->kernel_pagetable) {
+    proc_kvmfree(p->kernel_pagetable);
+  }
+  p->kernel_pagetable = 0;
+
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
@@ -471,9 +483,14 @@ scheduler(void)
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
+        proc_kvminithart(p->kernel_pagetable);
+
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
+
+        // Use kernel_pagetable when no process is running.
+        kvminithart();
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
