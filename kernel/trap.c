@@ -77,8 +77,21 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2) {
+    if (!p->in_alarm_handler && p->alarm_interval_ticks > 0 && p->alarm_handler < MAXVA) {
+      p->alarm_ticks--;
+      // Fire alarm.
+      if (p->alarm_ticks <= 0) {
+        p->alarm_ticks = p->alarm_interval_ticks;
+        p->in_alarm_handler = 1;
+
+        p->alarm_state = *p->trapframe;
+        p->trapframe->epc = p->alarm_handler;
+      }
+    }
+
     yield();
+  }
 
   usertrapret();
 }
@@ -95,6 +108,10 @@ usertrapret(void)
   // kerneltrap() to usertrap(), so turn off interrupts until
   // we're back in user space, where usertrap() is correct.
   intr_off();
+
+  if (p->in_alarm_handler == -1) {
+    p->in_alarm_handler = 0;
+  }
 
   // send syscalls, interrupts, and exceptions to trampoline.S
   w_stvec(TRAMPOLINE + (uservec - trampoline));
