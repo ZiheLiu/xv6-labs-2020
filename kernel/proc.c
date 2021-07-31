@@ -233,6 +233,10 @@ userinit(void)
   uvminit(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
+  if (proc_kernel_uvmcopy(p->kernel_pagetable, p->pagetable, 0, p->sz) < 0) {
+    panic("userinit: proc_kernel_uvmcopy failed");
+  }
+
   // prepare for the very first "return" from kernel to user.
   p->trapframe->epc = 0;      // user program counter
   p->trapframe->sp = PGSIZE;  // user stack pointer
@@ -255,11 +259,18 @@ growproc(int n)
 
   sz = p->sz;
   if(n > 0){
-    if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
+    if(sz + n >= PLIC || (sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
+      return -1;
+    }
+    if (proc_kernel_uvmcopy(p->kernel_pagetable, p->pagetable, p->sz, sz) < 0) {
+      uvmdealloc(p->pagetable, p->sz, sz);
       return -1;
     }
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
+
+    int npages = (PGROUNDUP(p->sz) - PGROUNDUP(sz)) / PGSIZE;
+    uvmunmap(p->kernel_pagetable, PGROUNDUP(sz), npages, 0);
   }
   p->sz = sz;
   return 0;
@@ -286,6 +297,13 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+
+  // Copy user page table to kernel page table.
+  if (proc_kernel_uvmcopy(np->kernel_pagetable, np->pagetable, 0, np->sz) < 0) {
+    freeproc(np);
+    release(&np->lock);
+    return -1;
+  }
 
   np->parent = p;
 

@@ -176,6 +176,24 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
+int proc_mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm) {
+  uint64 a, last;
+  pte_t *pte;
+
+  a = PGROUNDDOWN(va);
+  last = PGROUNDDOWN(va + size - 1);
+  for(;;){
+    if((pte = walk(pagetable, a, 1)) == 0)
+      return -1;
+    *pte = PA2PTE(pa) | perm | PTE_V;
+    if(a == last)
+      break;
+    a += PGSIZE;
+    pa += PGSIZE;
+  }
+  return 0;
+}
+
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
@@ -333,6 +351,40 @@ uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
+// Copy user page table to kernel page table with pages in address [start_va, end_va].
+int proc_kernel_uvmcopy(pagetable_t dst, pagetable_t src, uint64 start_va, uint64 end_va) {
+  uint64 i;
+  pte_t *pte;
+  uint64 pa;
+  uint flags;
+
+  end_va = PGROUNDUP(end_va);
+  if (end_va <= start_va){
+    return 0;
+  }
+
+  for (i = start_va; i < end_va; i += PGSIZE) {
+    if ((pte = walk(src, i, 0)) == 0) {
+      panic("proc_kernel_uvmcopy: pte should exist");
+    }
+    if ((*pte & PTE_V) == 0) {
+      panic("proc_kernel_uvmcopy: page not present");
+    }
+
+    pa = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte) & (~PTE_U);
+    if (proc_mappages(dst, i, PGSIZE, pa, flags) != 0) {
+      printf("proc_kernel_uvmcopy err\n");
+      goto err;
+    }
+  }
+  return 0;
+
+  err:
+  uvmunmap(dst, start_va, (i - start_va) / PGSIZE, 0);
+  return -1;
+}
+
 // Given a parent process's page table, copy
 // its memory into a child's page table.
 // Copies both the page table and the
@@ -413,23 +465,24 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
-  uint64 n, va0, pa0;
-
-  while(len > 0){
-    va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
-    n = PGSIZE - (srcva - va0);
-    if(n > len)
-      n = len;
-    memmove(dst, (void *)(pa0 + (srcva - va0)), n);
-
-    len -= n;
-    dst += n;
-    srcva = va0 + PGSIZE;
-  }
-  return 0;
+  return copyin_new(pagetable, dst, srcva, len);
+//  uint64 n, va0, pa0;
+//
+//  while(len > 0){
+//    va0 = PGROUNDDOWN(srcva);
+//    pa0 = walkaddr(pagetable, va0);
+//    if(pa0 == 0)
+//      return -1;
+//    n = PGSIZE - (srcva - va0);
+//    if(n > len)
+//      n = len;
+//    memmove(dst, (void *)(pa0 + (srcva - va0)), n);
+//
+//    len -= n;
+//    dst += n;
+//    srcva = va0 + PGSIZE;
+//  }
+//  return 0;
 }
 
 // Copy a null-terminated string from user to kernel.
@@ -439,40 +492,41 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 int
 copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 {
-  uint64 n, va0, pa0;
-  int got_null = 0;
-
-  while(got_null == 0 && max > 0){
-    va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
-    n = PGSIZE - (srcva - va0);
-    if(n > max)
-      n = max;
-
-    char *p = (char *) (pa0 + (srcva - va0));
-    while(n > 0){
-      if(*p == '\0'){
-        *dst = '\0';
-        got_null = 1;
-        break;
-      } else {
-        *dst = *p;
-      }
-      --n;
-      --max;
-      p++;
-      dst++;
-    }
-
-    srcva = va0 + PGSIZE;
-  }
-  if(got_null){
-    return 0;
-  } else {
-    return -1;
-  }
+  return copyinstr_new(pagetable, dst, srcva, max);
+//  uint64 n, va0, pa0;
+//  int got_null = 0;
+//
+//  while(got_null == 0 && max > 0){
+//    va0 = PGROUNDDOWN(srcva);
+//    pa0 = walkaddr(pagetable, va0);
+//    if(pa0 == 0)
+//      return -1;
+//    n = PGSIZE - (srcva - va0);
+//    if(n > max)
+//      n = max;
+//
+//    char *p = (char *) (pa0 + (srcva - va0));
+//    while(n > 0){
+//      if(*p == '\0'){
+//        *dst = '\0';
+//        got_null = 1;
+//        break;
+//      } else {
+//        *dst = *p;
+//      }
+//      --n;
+//      --max;
+//      p++;
+//      dst++;
+//    }
+//
+//    srcva = va0 + PGSIZE;
+//  }
+//  if(got_null){
+//    return 0;
+//  } else {
+//    return -1;
+//  }
 }
 
 void vmprint_walk(pagetable_t pagetable, int deep) {
