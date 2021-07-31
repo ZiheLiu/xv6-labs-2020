@@ -109,10 +109,6 @@ usertrapret(void)
   // we're back in user space, where usertrap() is correct.
   intr_off();
 
-  if (p->in_alarm_handler == -1) {
-    p->in_alarm_handler = 0;
-  }
-
   // send syscalls, interrupts, and exceptions to trampoline.S
   w_stvec(TRAMPOLINE + (uservec - trampoline));
 
