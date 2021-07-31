@@ -1,10 +1,10 @@
 # xv6-labs-2020
 
 ## TODO
-- [x] [lab1 utils](https://github.com/ZiheLiu/xv6-labs-2020/tree/util)
+- [x] [lab utils](https://github.com/ZiheLiu/xv6-labs-2020/tree/util)
 - [x] [Lab syscall: System calls](https://github.com/ZiheLiu/xv6-labs-2020/tree/syscall)
-- [ ] Lab pgtbl: Page tables
-- [ ] Lab traps: Trap
+- [x] [Lab pgtbl: Page tables](https://github.com/ZiheLiu/xv6-labs-2020/tree/pgtbl)
+- [x] [Lab traps: Trap](https://github.com/ZiheLiu/xv6-labs-2020/tree/traps)
 - [ ] Lab lazy: Lazy allocation
 - [ ] Lab cow: Copy-on-write fork
 - [ ] Lab thread: Multithreading
