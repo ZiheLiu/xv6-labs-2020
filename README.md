@@ -5,7 +5,7 @@
 - [x] [Lab syscall: System calls](https://github.com/ZiheLiu/xv6-labs-2020/tree/syscall)
 - [x] [Lab pgtbl: Page tables](https://github.com/ZiheLiu/xv6-labs-2020/tree/pgtbl)
 - [x] [Lab traps: Trap](https://github.com/ZiheLiu/xv6-labs-2020/tree/traps)
-- [ ] Lab lazy: Lazy allocation
+- [x] [Lab lazy: Lazy allocation](https://github.com/ZiheLiu/xv6-labs-2020/tree/lazy)
 - [ ] Lab cow: Copy-on-write fork
 - [ ] Lab thread: Multithreading
 - [ ] Lab lock: Parallelism/locking
