@@ -6,7 +6,7 @@
 - [x] [Lab pgtbl: Page tables](https://github.com/ZiheLiu/xv6-labs-2020/tree/pgtbl)
 - [x] [Lab traps: Trap](https://github.com/ZiheLiu/xv6-labs-2020/tree/traps)
 - [x] [Lab lazy: Lazy allocation](https://github.com/ZiheLiu/xv6-labs-2020/tree/lazy)
-- [ ] Lab cow: Copy-on-write fork
+- [x] [Lab cow: Copy-on-write fork](https://github.com/ZiheLiu/xv6-labs-2020/tree/cow)
 - [ ] Lab thread: Multithreading
 - [ ] Lab lock: Parallelism/locking
 - [ ] Lab fs: File system
